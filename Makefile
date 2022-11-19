@@ -8,6 +8,18 @@ endif
 
 include $(DEVKITARM)/ds_rules
 
+GAME_TITLE      :=  DS_calc
+GAME_SUBTITLE1	:=  xamuel.xyz
+GAME_SUBTITLE2	:=  A calculator for the nintendo DS
+
+GAME_ICON       := /home/samuel/Documents/code/ds_calc/data/icon.bmp
+
+export DEV_CODE			:=	01
+export GAME_CODE		:=	DSCL
+export GAME_TITLE		:=	DS CALC
+export VERSION			:=	3
+export VERSION_NAME		:=	Integer Perfection
+
 #---------------------------------------------------------------------------------
 # TARGET is the name of the output
 # BUILD is the directory where object files & intermediate files will be placed

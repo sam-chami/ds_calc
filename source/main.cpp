@@ -11,16 +11,23 @@
 #include <nds.h>
 #include <stdio.h>
 #include <math.h>
+#include <unordered_map>
 
 // Import keypad image
 #include "keypad.h"
 
+
 bool inRange(int low, int high, int x);
 int operate(int termA, int termB, int operation);
 
+using namespace std;
 int main(void)
 {
-	// Declarations
+	//      //
+        // OBJC //
+        //      //
+
+	// Related to touch:
 	touchPosition touch;
 	int buttons[23][5] = { {0, 1, 3 ,4, 7},		//
 			       {0, 5, 3, 8, 4},		//  0-9 = number
@@ -46,13 +53,20 @@ int main(void)
                                {19, 10, 22, 12, 0},
                                {16, 14, 22, 17, -10},
                              };
-
+	// Related to operating
 	int termA = 0;
 	int termB = 0;
 	bool firstDigit = true;
 	bool termCurrent = true; // Determines the current term (true = A, false = B)
 	int operation; // The operation we are performing (+, -, x, ^)
 	int result = 0;
+
+	// other
+	char coperator;
+	unordered_map<int, char> operators { { -2, '-'}, { -3, '+'}, { -4, 'x'}, { -5, '/'}, { -6, '^'}, { -7, 'r'}, { -8, 'l'} };
+	//      //
+	// CODE //
+	//      //
 
 	// Set the Sub Display to bitmap background mode
 	videoSetModeSub(MODE_5_2D);
@@ -67,7 +81,6 @@ int main(void)
 	// Display some Info
 	iprintf("\x1b[2;3HNintendo DS(i) calculator");
         iprintf("\x1b[3;3Hxamuel.xyz");
-        iprintf("\x1b[18;3HResult:");
 	
 	// draw keypad bitmap
 	int bg2 = bgInitSub(2, BgType_Bmp8, BgSize_B8_256x256, 0,0);
@@ -78,15 +91,17 @@ int main(void)
 	while(1) {
 	   swiWaitForVBlank();
 	   touchRead(&touch);
-	   
+	   scanKeys();
+
 	   int i;
 	   for (i = 0; i < 23; i++) {
 	      if (inRange(buttons[i][0], buttons[i][2], touch.px/10) && inRange(buttons[i][1], buttons[i][3], touch.py/10)) {
 	      	 if (buttons[i][4] < 0) {
 		    if (inRange(-2, -8, buttons[i][4])) {
-			operation = buttons[i][4];
-			termCurrent = false;
-			firstDigit = true;
+		       operation = buttons[i][4];
+		       termCurrent = false;
+		       firstDigit = true;
+		       coperator = operators[buttons[i][4]];
 		    } else {
 		       switch(buttons[i][4]) {
 		          case -1: // dot
@@ -101,9 +116,11 @@ int main(void)
 			  case -10: // equal
 			     result = operate(termA, termB, operation);
 			     if (result != NULL) {
-			        iprintf("\x1b[18;24H%d", result);
+				int digits = log10(result)+1;
+				iprintf("\x1b[18;3H                              ");
+			        iprintf("\x1b[18;%dH%d", 28 - digits, result);
 			     } else {
-                                iprintf("\x1b[18;15HERROR");
+                                iprintf("\x1b[18;23;HERROR");
 			     }
                              //termA = result;
 			     //termB = 0;
@@ -114,6 +131,7 @@ int main(void)
 		       }
 		    }
 		 } else {
+		    if (keysDown()) {
 		       if (termCurrent) {
 		          if (firstDigit){
 			     termA = buttons[i][4];
@@ -127,13 +145,13 @@ int main(void)
 			     firstDigit = false;
                           } else {
                              termB = termB * 10 + buttons[i][4];
-                          }
+			  }
 		       }
+		    }
 		 }
+           	 iprintf("\x1b[18;3H%d %c %d =", termA, coperator, termB);
 	      }
 	   }
-
-           iprintf("\x1b[8;5H%d, %d, %d\n", termA, termB, touch.z1);
 	}
 
 	return 0;

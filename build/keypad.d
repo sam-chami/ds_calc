@@ -1,1 +1,0 @@
-keypad.o: keypad.s
