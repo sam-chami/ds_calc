@@ -18,7 +18,7 @@
 
 
 bool inRange(int low, int high, int x);
-int operate(int termA, int termB, int operation);
+float operate(float termA, float termB, int operation);
 
 using namespace std;
 int main(void)
@@ -54,12 +54,16 @@ int main(void)
                                {16, 14, 22, 17, -10},
                              };
 	// Related to operating
-	int termA = 0;
-	int termB = 0;
+	float termA = 0.00;
+	unsigned int precisionA = 0;
+	float termB = 0.00;
+	unsigned int precisionB = 0;
 	bool firstDigit = true;
 	bool termCurrent = true; // Determines the current term (true = A, false = B)
 	int operation; // The operation we are performing (+, -, x, ^)
-	int result = 0;
+	float result = 0.00;
+	unsigned int decimal = 0;
+	bool opFinished = false;
 
 	// other
 	char coperator;
@@ -79,8 +83,9 @@ int main(void)
 	consoleInit(0, 0, BgType_Text4bpp, BgSize_T_256x256, 16, 6, true, true);
 	
 	// Display some Info
-	iprintf("\x1b[2;3HNintendo DS(i) calculator");
-        iprintf("\x1b[3;3Hxamuel.xyz");
+	iprintf("\x1b[2;3HDS_calc");
+	iprintf("\x1b[3;3Hxamuel.xyz/dscalc");
+        iprintf("\x1b[2;%dH%d%%", 27 - 3, getBatteryLevel());
 	
 	// draw keypad bitmap
 	int bg2 = bgInitSub(2, BgType_Bmp8, BgSize_B8_256x256, 0,0);
@@ -99,57 +104,94 @@ int main(void)
 	      	 if (buttons[i][4] < 0) {
 		    if (inRange(-2, -8, buttons[i][4])) {
 		       operation = buttons[i][4];
+		       if (termCurrent) { precisionA = decimal;}
+                       else { precisionB = decimal;}
 		       termCurrent = false;
 		       firstDigit = true;
+		       decimal = 0;
 		       coperator = operators[buttons[i][4]];
 		    } else {
 		       switch(buttons[i][4]) {
 		          case -1: // dot
+			     decimal = 1;
 			     break;
 			  case -9: // remove
-                             if (termCurrent) {
-                                termA = 0;
-                             } else {
-                                termB = 0;
-                       	     }
+                             termA = 0.00;
+                             termB = 0.00;
+			     result = 0.00;
+			     precisionA = 0;
+                             precisionB = 0;
+			     firstDigit = true;
+                             termCurrent = true;
+			     iprintf("\x1b[18;2H                              ");
+			     iprintf("\x1b[20;1H                               ");
+			     printf("\x1b[18;3H%.*f %c %.*f =", 0, termA, coperator, 0, termB);
+                             printf("\x1b[20;23H0.000");
 			     break;
 			  case -10: // equal
+			     //if (termCurrent) { precisionA = decimal;}
 			     result = operate(termA, termB, operation);
+			     iprintf("\x1b[18;2H                              ");
+			     printf("\x1b[18;3H%.*f %c %.*f =", precisionA, termA, coperator, decimal, termB);
 			     if (result != NULL) {
 				int digits = log10(result)+1;
-				iprintf("\x1b[18;3H                              ");
-			        iprintf("\x1b[18;%dH%d", 28 - digits, result);
+			        iprintf("\x1b[20;1H                               ");
+				printf("\x1b[20;%dH%.4f", 22 - digits, result);
 			     } else {
                                 iprintf("\x1b[18;23;HERROR");
 			     }
-                             //termA = result;
-			     //termB = 0;
-			     //operation = 0;
+                             precisionA = 0;
+			     precisionB = 0;
+			     decimal = 0;
 			     firstDigit = true;
 			     termCurrent = true;
+			     opFinished = true;
+			     break;
+			  case -11:
+			     if (termCurrent) { termA = 3.141593; }
+			     else { termB = 3.141593; }
+			     decimal = 6;
 			     break;
 		       }
 		    }
 		 } else {
 		    if (keysDown()) {
-		       if (termCurrent) {
-		          if (firstDigit){
-			     termA = buttons[i][4];
-			     firstDigit = false;
-			  } else {
-			     termA = termA * 10 + buttons[i][4];
-			  }
-		       } else {
-		          if (firstDigit){
-                             termB = buttons[i][4];
-			     firstDigit = false;
-                          } else {
-                             termB = termB * 10 + buttons[i][4];
-			  }
-		       }
+			opFinished = false;
+		        if (decimal > 0) {
+			   if (termCurrent) {
+                              termA = termA + buttons[i][4] / pow(10, decimal);
+			      decimal++;
+                           } else {
+                              termB = termB + buttons[i][4] / pow(10, decimal);
+                       	      decimal++;
+			   }
+			} else {
+			   if (termCurrent) {
+		             if (firstDigit){
+			        termA = buttons[i][4];
+			        firstDigit = false;
+			     } else {
+			        termA = termA * 10 + buttons[i][4];
+			     }
+		          } else {
+		             if (firstDigit){
+                                termB = buttons[i][4];
+			        firstDigit = false;
+                             } else {
+                                termB = termB * 10 + buttons[i][4];
+			     }
+		          }
+			}
 		    }
 		 }
-           	 iprintf("\x1b[18;3H%d %c %d =", termA, coperator, termB);
+		 if (!opFinished){
+		    iprintf("\x1b[18;2H                              ");
+		    if (precisionA == 0 && termCurrent) {
+		       printf("\x1b[18;3H%.*f %c %.*f =", decimal, termA, coperator, 0, termB);
+		    } if (precisionB == 0 && !termCurrent) {
+		       printf("\x1b[18;3H%.*f %c %.*f =", precisionA, termA, coperator, decimal, termB);
+		    }
+		 }
 	      }
 	   }
 	}
@@ -162,8 +204,8 @@ bool inRange(int low, int high, int x) {
 	return ((x-high)*(x-low) <= 0);
 }
 
-int operate(int termA, int termB, int operation) {
-	int result = 0;
+float operate(float termA, float termB, int operation) {
+	float result = 0.00;
 
 	switch (operation) {
 	   case -2:
@@ -176,7 +218,7 @@ int operate(int termA, int termB, int operation) {
 	      result = termA * termB;
               break;
 	   case -5:
-	      if (termB != 0){
+	      if (termB != 0.00){
 	         result = termA / termB;
 	      } else {
 	         result = NULL;
